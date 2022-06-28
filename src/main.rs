@@ -1,189 +1,121 @@
-use rand::Rng;
-use std::fmt;
+use crate::data::calculate_main_max_passthrough;
+use crate::data::calculate_min_count;
+use crate::data::calculate_side_max_passthrough;
+use crate::data::fixed_data;
+use crate::data::generate_data;
+use crate::data::GenerationData;
+use crate::data::OptimizationData;
+use crate::data::SimulationData;
+use clap::Parser;
+use optimization::optimize;
 
-#[derive(Clone)]
-struct TrafficState {
-    main_from_prev: i32,
-    main_from_next: i32,
-    side: i32,
-}
+pub mod data;
+pub mod optimization;
+pub mod simulation;
+pub mod utils;
 
-impl fmt::Debug for TrafficState {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "\n{{main_from_prev: {}, main_from_next: {}, side: {}}}",
-            self.main_from_prev, self.main_from_next, self.side
-        )
-    }
-}
+/// Evolutionary algorithm to optimize traffic lights on a linear road with intersections
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    /// Number of iterations to run
+    #[clap(short, long, default_value_t = 1000)]
+    iterations: usize,
 
-fn random_traffic_value(main: bool) -> i32 {
-    let mut rng = rand::thread_rng();
-    if main {
-        return rng.gen_range(8..20);
-    }
-    rng.gen_range(3..10)
-}
+    /// Optimization variant to use
+    #[clap(short, long, default_value = "default", possible_values = ["default", "simple"])]
+    optimization: String,
 
-fn build_traffic_state_initial() -> TrafficState {
-    TrafficState {
-        main_from_prev: random_traffic_value(true),
-        main_from_next: random_traffic_value(true),
-        side: random_traffic_value(false),
-    }
-}
+    /// Mutation variant to use
+    #[clap(short, long, default_value = "prob_bitflip", possible_values = ["none", "bitflip", "prob_bitflip"])]
+    mutation: String,
 
-fn build_traffic_state_base() -> TrafficState {
-    TrafficState {
-        main_from_prev: 0,
-        main_from_next: 0,
-        side: random_traffic_value(false),
-    }
-}
+    /// Probability for bitflip in prob_bitflip mutation
+    #[clap(short, long, default_value_t = 0.013)]
+    probability: f64,
 
-fn build_traffic_state_first_intersection() -> TrafficState {
-    TrafficState {
-        main_from_prev: random_traffic_value(true),
-        main_from_next: 0,
-        side: random_traffic_value(false),
-    }
-}
+    /// Population size
+    #[clap(short = 'P', long, default_value_t = 50)]
+    population_size: usize,
 
-fn build_traffic_state_last_intersection() -> TrafficState {
-    TrafficState {
-        main_from_prev: 0,
-        main_from_next: random_traffic_value(true),
-        side: random_traffic_value(false),
-    }
-}
+    /// Population size
+    #[clap(long, default_value_t = 10)]
+    parents_size: usize,
 
-fn generate_data(intersections: usize, timesteps: usize) -> Vec<Vec<TrafficState>> {
-    let mut data: Vec<Vec<TrafficState>> = Vec::new();
-    for index in 0..intersections {
-        let mut traffic_data: Vec<TrafficState> = Vec::new();
+    /// Tournament size
+    #[clap(short, long, default_value_t = 5)]
+    tournament_size: usize,
 
-        let random_initial_traffic = build_traffic_state_initial();
-        traffic_data.push(random_initial_traffic);
+    /// Number of intersections for the traffic simulation
+    #[clap(long, default_value_t = 8)]
+    intersections: usize,
 
-        for _ in 1..timesteps {
-            if index == 0 {
-                traffic_data.push(build_traffic_state_first_intersection());
-            } else if index == intersections - 1 {
-                traffic_data.push(build_traffic_state_last_intersection());
-            } else {
-                traffic_data.push(build_traffic_state_base());
-            }
-        }
-        let new_intersection = traffic_data;
-        data.push(new_intersection);
-    }
-    data
-}
+    /// Number of timesteps for the traffic simulation
+    #[clap(long, default_value_t = 16)]
+    timesteps: usize,
 
-fn extract_step(traffic_data: &Vec<Vec<TrafficState>>, t: usize) -> Vec<TrafficState> {
-    let mut step_data: Vec<TrafficState> = Vec::new();
-    for intersection in traffic_data.iter() {
-        match intersection.get(t) {
-            Some(traffic_data) => step_data.push(traffic_data.clone()),
-            None => {}
-        }
-    }
-    step_data
-}
+    /// Maximum number of cars possible on the main road
+    #[clap(long, default_value_t = 20)]
+    main_max_count: i32,
 
-fn calc_next(val: i32, fac: f64) -> i32 {
-    ((val as f64) * fac).floor() as i32
-}
+    /// Maximum number of cars possible on the side roads
+    #[clap(long, default_value_t = 10)]
+    side_max_count: i32,
 
-fn apply_main(
-    traffic_to_update: &mut Vec<TrafficState>,
-    current_traffic: &TrafficState,
-    index: usize,
-    car_count: &mut i32,
-) {
-    *car_count += current_traffic.main_from_prev;
-    *car_count += current_traffic.main_from_next;
-    match traffic_to_update.get_mut(index) {
-        Some(next_traffic_current) => {
-            next_traffic_current.side += current_traffic.side;
-        }
-        None => {}
-    }
-    match traffic_to_update.get_mut(index + 1) {
-        Some(next_traffic_next) => {
-            next_traffic_next.main_from_prev += calc_next(current_traffic.main_from_prev, 0.8)
-        }
-        None => {}
-    }
-    if index > 0 {
-        match traffic_to_update.get_mut(index - 1) {
-            Some(next_traffic_prev) => {
-                next_traffic_prev.main_from_next += calc_next(current_traffic.main_from_next, 0.8)
-            }
-            None => {}
-        }
-    }
-}
+    /// Amount of cars staying on the main road
+    #[clap(long, default_value_t = 0.8)]
+    main_percentage: f64,
 
-fn apply_side(
-    traffic_to_update: &mut Vec<TrafficState>,
-    current_traffic: &TrafficState,
-    index: usize,
-    car_count: &mut i32,
-) {
-    *car_count += current_traffic.side;
-    match traffic_to_update.get_mut(index) {
-        Some(next_traffic_current) => {
-            next_traffic_current.main_from_prev += current_traffic.main_from_prev;
-            next_traffic_current.main_from_next += current_traffic.main_from_next;
-        }
-        None => {}
-    }
-    match traffic_to_update.get_mut(index + 1) {
-        Some(next_traffic_next) => {
-            next_traffic_next.main_from_prev += calc_next(current_traffic.side, 0.3)
-        }
-        None => {}
-    }
-    if index > 0 {
-        match traffic_to_update.get_mut(index - 1) {
-            Some(next_traffic_prev) => {
-                next_traffic_prev.main_from_next += calc_next(current_traffic.side, 0.3)
-            }
-            None => {}
-        }
-    }
-}
+    /// Amount of cars coming to main road from side roads
+    #[clap(long, default_value_t = 0.6)]
+    side_percentage: f64,
 
-fn step(
-    traffic_data: &Vec<Vec<TrafficState>>,
-    current_traffic: &Vec<TrafficState>,
-    t: usize,
-    car_count: &mut i32,
-) -> Vec<TrafficState> {
-    let mut next_traffic = extract_step(traffic_data, t + 1);
-    for (index, traffic) in current_traffic.iter().enumerate() {
-        apply_main(&mut next_traffic, traffic, index, car_count);
-    }
-    next_traffic
-}
+    /// Car traffic data to use for the traffic simulation
+    #[clap(long, default_value = "fixed", possible_values = ["fixed", "generate"])]
+    data: String,
 
-fn simulate(traffic_data: &Vec<Vec<TrafficState>>, timesteps: usize) {
-    let mut cars = 0;
-    let mut current_step = extract_step(traffic_data, 0);
-    for t in 0..timesteps {
-        println!("Step {}:", t);
-        println!("{:?}", current_step);
-        current_step = step(traffic_data, &current_step, t, &mut cars);
-    }
-    println!("Cars transported: {}", cars);
+    /// Use a max passthrough value to limit cars per timestep
+    #[clap(short, long)]
+    use_max_passthrough: bool,
 }
 
 fn main() {
-    let intersection: usize = 4;
-    let timesteps: usize = 4;
-    let traffic_data = generate_data(intersection, timesteps);
-    println!("{:?}", traffic_data);
-    simulate(&traffic_data, timesteps);
+    let args = Args::parse();
+
+    let generation_data = GenerationData {
+        main_max_count: args.main_max_count,
+        side_max_count: args.side_max_count,
+        main_min_count: calculate_min_count(args.main_max_count),
+        side_min_count: calculate_min_count(args.side_max_count),
+    };
+
+    let traffic_data;
+    if args.data == "generate" {
+        traffic_data = generate_data(args.intersections, args.timesteps, &generation_data);
+    } else {
+        traffic_data = fixed_data();
+    }
+
+    let simulation_data = SimulationData {
+        intersections: args.intersections,
+        timesteps: args.timesteps,
+        traffic_data,
+        use_max_passthrough: args.use_max_passthrough,
+        main_max_passthrough: calculate_main_max_passthrough(args.main_max_count),
+        side_max_passthrough: calculate_side_max_passthrough(args.side_max_count),
+        main_percentage: args.main_percentage,
+        side_percentage: args.side_percentage,
+    };
+
+    let optimization_data = OptimizationData {
+        iterations: args.iterations,
+        optimization: args.optimization,
+        mutation: args.mutation,
+        probability: args.probability,
+        population_size: args.population_size,
+        parents_size: args.parents_size,
+        tournament_size: args.tournament_size,
+    };
+
+    optimize(&optimization_data, &simulation_data);
 }
