@@ -26,7 +26,7 @@ pub fn get_best_and_worst_candidate(
     )
 }
 
-pub fn get_median_value(values: &Vec<i32>) -> i32 {
+pub fn get_mean_value(values: &Vec<i32>) -> i32 {
     values.iter().sum::<i32>() / values.len() as i32
 }
 

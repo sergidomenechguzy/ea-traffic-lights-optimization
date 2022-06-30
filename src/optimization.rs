@@ -1,12 +1,13 @@
 use crate::data::generate_candidate;
 use crate::data::generate_population;
+use crate::data::ConfigurationData;
 use crate::data::OptimizationData;
 use crate::data::SimulationData;
 use crate::simulation::simulate;
 use crate::simulation::simulate_population;
 use crate::utils::distinct_random;
 use crate::utils::get_best_and_worst_candidate;
-use crate::utils::get_median_value;
+use crate::utils::get_mean_value;
 use crate::utils::tournament;
 use bit_vec::BitVec;
 use rand::Rng;
@@ -41,14 +42,14 @@ fn probability_bitflip(input: &Vec<BitVec>, probability: f64) -> Vec<BitVec> {
             }
         }
     }
-    // println!("{}", bits_modified);
+    // println!("bits modified {}", bits_modified);
     modified
 }
 
 fn mutation(candidate: &Vec<BitVec>, optimization_data: &OptimizationData) -> Vec<BitVec> {
     let mutated_candidate;
     if optimization_data.mutation == "prob_bitflip" {
-        mutated_candidate = probability_bitflip(candidate, optimization_data.probability);
+        mutated_candidate = probability_bitflip(candidate, optimization_data.probability_bitflip);
     } else if optimization_data.mutation == "bitflip" {
         mutated_candidate = bitflip(candidate);
     } else {
@@ -61,7 +62,6 @@ fn one_point_crossover(
     input1: &Vec<BitVec>,
     input2: &Vec<BitVec>,
     simulation_data: &SimulationData,
-    // results: &mut Vec<Vec<BitVec>>,
 ) -> (Vec<BitVec>, Vec<BitVec>) {
     let mut rng = rand::thread_rng();
     let random_index = rng.gen_range(1..simulation_data.timesteps);
@@ -83,21 +83,21 @@ fn one_point_crossover(
         crossover2.push(bitvec2);
     }
 
-    // results.push(crossover1);
-    // results.push(crossover2);
     (crossover1, crossover2)
 }
 
 fn recombination(
     candidate1: &Vec<BitVec>,
     candidate2: &Vec<BitVec>,
+    optimization_data: &OptimizationData,
     simulation_data: &SimulationData,
 ) -> (Vec<BitVec>, Vec<BitVec>) {
-    // let mut results: Vec<Vec<BitVec>> = Vec::with_capacity(2);
-    // one_point_crossover(candidate2, candidate1, simulation_data, &mut results);
-    // results
+    let mut rng = rand::thread_rng();
 
-    one_point_crossover(candidate1, candidate2, simulation_data)
+    if rng.gen::<f64>() < optimization_data.probability_recombination {
+        return one_point_crossover(candidate1, candidate2, simulation_data);
+    }
+    (candidate1.clone(), candidate2.clone())
 }
 
 fn selection(
@@ -114,6 +114,7 @@ fn selection(
         let (recomb1, recomb2) = recombination(
             &population[selected[randoms[0]]],
             &population[selected[randoms[1]]],
+            optimization_data,
             simulation_data,
         );
 
@@ -123,11 +124,17 @@ fn selection(
     next_population
 }
 
-fn optimize_simple(optimization_data: &OptimizationData, simulation_data: &SimulationData) {
+fn hillclimb(
+    configuration_data: &ConfigurationData,
+    optimization_data: &OptimizationData,
+    simulation_data: &SimulationData,
+) -> i32 {
     let mut candidate =
         generate_candidate(simulation_data.intersections, simulation_data.timesteps);
     let mut candidate_value = simulate(&simulation_data, &candidate);
-    println!("0:\t{:?}\t{}", candidate, candidate_value);
+    if !configuration_data.silent {
+        println!("0:\t{:?}\t{}", candidate, candidate_value);
+    }
 
     for it in 0..optimization_data.iterations {
         let mutated_candidate = mutation(&candidate, optimization_data);
@@ -137,12 +144,22 @@ fn optimize_simple(optimization_data: &OptimizationData, simulation_data: &Simul
             candidate = mutated_candidate;
             candidate_value = mutated_candidate_value;
 
-            println!("{}:\t{:?}\t{}", it + 1, candidate, candidate_value);
+            if !configuration_data.silent {
+                println!("{}:\t{:?}\t{}", it + 1, candidate, candidate_value);
+            }
         }
     }
+
+    println!("Final candidate:");
+    println!("{:?}\t{}", candidate, candidate_value);
+    candidate_value
 }
 
-fn optimize_default(optimization_data: &OptimizationData, simulation_data: &SimulationData) {
+fn genetic_algorithm(
+    configuration_data: &ConfigurationData,
+    optimization_data: &OptimizationData,
+    simulation_data: &SimulationData,
+) -> i32 {
     let mut population = generate_population(
         optimization_data.population_size,
         simulation_data.intersections,
@@ -151,12 +168,14 @@ fn optimize_default(optimization_data: &OptimizationData, simulation_data: &Simu
     let mut population_values = simulate_population(simulation_data, &population);
     let (mut best, mut best_value, _) =
         get_best_and_worst_candidate(&population, &population_values);
-    println!(
-        "0:\t{:?}\t{}\t{}",
-        best,
-        best_value,
-        get_median_value(&population_values)
-    );
+    if !configuration_data.silent {
+        println!(
+            "0:\t{:?}\t{}\t{}",
+            best,
+            best_value,
+            get_mean_value(&population_values)
+        );
+    }
 
     for it in 0..optimization_data.iterations {
         let next_population = selection(
@@ -177,21 +196,37 @@ fn optimize_default(optimization_data: &OptimizationData, simulation_data: &Simu
             best = next_best;
             best_value = next_best_value;
 
-            println!(
-                "{}:\t{:?}\t{}\t{}",
-                it + 1,
-                best,
-                best_value,
-                get_median_value(&population_values)
-            );
+            if !configuration_data.silent {
+                println!(
+                    "{}:\t{:?}\t{}\t{}",
+                    it + 1,
+                    best,
+                    best_value,
+                    get_mean_value(&population_values)
+                );
+            }
         }
     }
+
+    println!("Final candidate:");
+    println!(
+        "{:?}\t{}\t{}",
+        best,
+        best_value,
+        get_mean_value(&population_values)
+    );
+    best_value
 }
 
-pub fn optimize(optimization_data: &OptimizationData, simulation_data: &SimulationData) {
-    if optimization_data.optimization == "default" {
-        optimize_default(optimization_data, simulation_data);
-    } else if optimization_data.optimization == "simple" {
-        optimize_simple(optimization_data, simulation_data);
+pub fn optimize(
+    configuration_data: &ConfigurationData,
+    optimization_data: &OptimizationData,
+    simulation_data: &SimulationData,
+) -> i32 {
+    if optimization_data.optimization == "genetic" {
+        return genetic_algorithm(configuration_data, optimization_data, simulation_data);
+    } else if optimization_data.optimization == "hillclimb" {
+        return hillclimb(configuration_data, optimization_data, simulation_data);
     }
+    0
 }

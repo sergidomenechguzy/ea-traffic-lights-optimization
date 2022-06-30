@@ -3,6 +3,7 @@ use crate::data::calculate_min_count;
 use crate::data::calculate_side_max_passthrough;
 use crate::data::fixed_data;
 use crate::data::generate_data;
+use crate::data::ConfigurationData;
 use crate::data::GenerationData;
 use crate::data::OptimizationData;
 use crate::data::SimulationData;
@@ -18,12 +19,44 @@ pub mod utils;
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
+    /// Hide output on iterations with improvements
+    #[clap(short, long)]
+    silent: bool,
+
+    /// Print the simulation data for the final best candidate
+    #[clap(long)]
+    print_final_simulation: bool,
+
+    /// Run optimization a set amount of times (default 20) and show mean of results
+    #[clap(short, long)]
+    benchmark: bool,
+
+    /// Number of times to run optimization in benchmark
+    #[clap(long, default_value_t = 20)]
+    benchmark_iterations: i32,
+
+    /// Draw plot of best values of each iteration
+    #[clap(long)]
+    plot: bool,
+
+    /// Car traffic data to use for the traffic simulation
+    #[clap(long, default_value = "fixed", possible_values = ["fixed", "generate"])]
+    data: String,
+
+    /// Maximum number of cars possible on the main road
+    #[clap(long, default_value_t = 20)]
+    main_max_count: i32,
+
+    /// Maximum number of cars possible on the side roads
+    #[clap(long, default_value_t = 10)]
+    side_max_count: i32,
+
     /// Number of iterations to run
     #[clap(short, long, default_value_t = 1000)]
     iterations: usize,
 
     /// Optimization variant to use
-    #[clap(short, long, default_value = "default", possible_values = ["default", "simple"])]
+    #[clap(short, long, default_value = "genetic", possible_values = ["genetic", "hillclimb"])]
     optimization: String,
 
     /// Mutation variant to use
@@ -31,14 +64,18 @@ struct Args {
     mutation: String,
 
     /// Probability for bitflip in prob_bitflip mutation
-    #[clap(short, long, default_value_t = 0.013)]
-    probability: f64,
+    #[clap(long, default_value_t = 0.0078125)]
+    probability_bitflip: f64,
+
+    /// Probability for bitflip in prob_bitflip mutation
+    #[clap(long, default_value_t = 0.75)]
+    probability_recombination: f64,
 
     /// Population size
-    #[clap(short = 'P', long, default_value_t = 50)]
+    #[clap(short, long, default_value_t = 50)]
     population_size: usize,
 
-    /// Population size
+    /// Parent population size
     #[clap(long, default_value_t = 10)]
     parents_size: usize,
 
@@ -54,13 +91,9 @@ struct Args {
     #[clap(long, default_value_t = 16)]
     timesteps: usize,
 
-    /// Maximum number of cars possible on the main road
-    #[clap(long, default_value_t = 20)]
-    main_max_count: i32,
-
-    /// Maximum number of cars possible on the side roads
-    #[clap(long, default_value_t = 10)]
-    side_max_count: i32,
+    /// Disable the max passthrough value to not limit cars per timestep
+    #[clap(short, long)]
+    disable_max_passthrough: bool,
 
     /// Amount of cars staying on the main road
     #[clap(long, default_value_t = 0.8)]
@@ -69,18 +102,19 @@ struct Args {
     /// Amount of cars coming to main road from side roads
     #[clap(long, default_value_t = 0.6)]
     side_percentage: f64,
-
-    /// Car traffic data to use for the traffic simulation
-    #[clap(long, default_value = "fixed", possible_values = ["fixed", "generate"])]
-    data: String,
-
-    /// Use a max passthrough value to limit cars per timestep
-    #[clap(short, long)]
-    use_max_passthrough: bool,
 }
 
 fn main() {
     let args = Args::parse();
+
+    let configuration_data = ConfigurationData {
+        silent: args.silent,
+        print_final_simulation: args.print_final_simulation,
+        benchmark: args.benchmark,
+        benchmark_iterations: args.benchmark_iterations,
+        plot: args.plot,
+        data: args.data,
+    };
 
     let generation_data = GenerationData {
         main_max_count: args.main_max_count,
@@ -90,32 +124,47 @@ fn main() {
     };
 
     let traffic_data;
-    if args.data == "generate" {
+    if configuration_data.data == "generate" {
         traffic_data = generate_data(args.intersections, args.timesteps, &generation_data);
+        println!("{:?}", traffic_data);
     } else {
         traffic_data = fixed_data();
     }
+
+    let optimization_data = OptimizationData {
+        iterations: args.iterations,
+        optimization: args.optimization,
+        mutation: args.mutation,
+        probability_bitflip: args.probability_bitflip,
+        probability_recombination: args.probability_recombination,
+        population_size: args.population_size,
+        parents_size: args.parents_size,
+        tournament_size: args.tournament_size,
+    };
 
     let simulation_data = SimulationData {
         intersections: args.intersections,
         timesteps: args.timesteps,
         traffic_data,
-        use_max_passthrough: args.use_max_passthrough,
+        disable_max_passthrough: args.disable_max_passthrough,
         main_max_passthrough: calculate_main_max_passthrough(args.main_max_count),
         side_max_passthrough: calculate_side_max_passthrough(args.side_max_count),
         main_percentage: args.main_percentage,
         side_percentage: args.side_percentage,
     };
 
-    let optimization_data = OptimizationData {
-        iterations: args.iterations,
-        optimization: args.optimization,
-        mutation: args.mutation,
-        probability: args.probability,
-        population_size: args.population_size,
-        parents_size: args.parents_size,
-        tournament_size: args.tournament_size,
-    };
-
-    optimize(&optimization_data, &simulation_data);
+    if args.benchmark {
+        let mut accumulated_results = 0;
+        for _ in 0..args.benchmark_iterations {
+            accumulated_results +=
+                optimize(&configuration_data, &optimization_data, &simulation_data);
+        }
+        println!(
+            "Mean of best individual over {} iterations: {}",
+            args.benchmark_iterations,
+            accumulated_results / args.benchmark_iterations
+        );
+    } else {
+        optimize(&configuration_data, &optimization_data, &simulation_data);
+    }
 }

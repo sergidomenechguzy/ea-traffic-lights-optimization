@@ -4,6 +4,16 @@ use rand::Rng;
 use std::fmt;
 
 #[derive(Debug)]
+pub struct ConfigurationData {
+    pub silent: bool,
+    pub print_final_simulation: bool,
+    pub benchmark: bool,
+    pub benchmark_iterations: i32,
+    pub plot: bool,
+    pub data: String,
+}
+
+#[derive(Debug)]
 pub struct GenerationData {
     pub main_max_count: i32,
     pub side_max_count: i32,
@@ -16,7 +26,7 @@ pub struct SimulationData {
     pub intersections: usize,
     pub timesteps: usize,
     pub traffic_data: Vec<Vec<TrafficState>>,
-    pub use_max_passthrough: bool,
+    pub disable_max_passthrough: bool,
     pub main_max_passthrough: i32,
     pub side_max_passthrough: i32,
     pub main_percentage: f64,
@@ -28,7 +38,8 @@ pub struct OptimizationData {
     pub iterations: usize,
     pub optimization: String,
     pub mutation: String,
-    pub probability: f64,
+    pub probability_bitflip: f64,
+    pub probability_recombination: f64,
     pub population_size: usize,
     pub parents_size: usize,
     pub tournament_size: usize,
@@ -163,342 +174,1007 @@ pub fn generate_population(
     population
 }
 
+// 8 by 8 fixed data
+// pub fn fixed_data() -> Vec<Vec<TrafficState>> {
+//     let traffic_data: Vec<Vec<TrafficState>> = vec![
+//         vec![
+//             TrafficState {
+//                 main_from_prev: 14,
+//                 main_from_next: 13,
+//                 side: 3,
+//             },
+//             TrafficState {
+//                 main_from_prev: 17,
+//                 main_from_next: 0,
+//                 side: 6,
+//             },
+//             TrafficState {
+//                 main_from_prev: 12,
+//                 main_from_next: 0,
+//                 side: 5,
+//             },
+//             TrafficState {
+//                 main_from_prev: 13,
+//                 main_from_next: 0,
+//                 side: 7,
+//             },
+//             TrafficState {
+//                 main_from_prev: 16,
+//                 main_from_next: 0,
+//                 side: 6,
+//             },
+//             TrafficState {
+//                 main_from_prev: 16,
+//                 main_from_next: 0,
+//                 side: 7,
+//             },
+//             TrafficState {
+//                 main_from_prev: 19,
+//                 main_from_next: 0,
+//                 side: 6,
+//             },
+//             TrafficState {
+//                 main_from_prev: 16,
+//                 main_from_next: 0,
+//                 side: 7,
+//             },
+//         ],
+//         vec![
+//             TrafficState {
+//                 main_from_prev: 12,
+//                 main_from_next: 19,
+//                 side: 7,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 8,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 7,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 4,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 5,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 8,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 7,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 7,
+//             },
+//         ],
+//         vec![
+//             TrafficState {
+//                 main_from_prev: 19,
+//                 main_from_next: 9,
+//                 side: 6,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 5,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 4,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 8,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 3,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 8,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 9,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 5,
+//             },
+//         ],
+//         vec![
+//             TrafficState {
+//                 main_from_prev: 8,
+//                 main_from_next: 11,
+//                 side: 8,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 3,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 8,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 3,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 5,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 4,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 5,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 3,
+//             },
+//         ],
+//         vec![
+//             TrafficState {
+//                 main_from_prev: 15,
+//                 main_from_next: 10,
+//                 side: 9,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 5,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 4,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 5,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 4,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 3,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 4,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 6,
+//             },
+//         ],
+//         vec![
+//             TrafficState {
+//                 main_from_prev: 16,
+//                 main_from_next: 16,
+//                 side: 3,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 7,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 8,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 6,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 8,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 5,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 5,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 5,
+//             },
+//         ],
+//         vec![
+//             TrafficState {
+//                 main_from_prev: 19,
+//                 main_from_next: 13,
+//                 side: 7,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 3,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 5,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 5,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 5,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 9,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 5,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 0,
+//                 side: 5,
+//             },
+//         ],
+//         vec![
+//             TrafficState {
+//                 main_from_prev: 14,
+//                 main_from_next: 9,
+//                 side: 6,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 17,
+//                 side: 6,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 18,
+//                 side: 5,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 18,
+//                 side: 3,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 15,
+//                 side: 5,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 12,
+//                 side: 7,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 12,
+//                 side: 4,
+//             },
+//             TrafficState {
+//                 main_from_prev: 0,
+//                 main_from_next: 13,
+//                 side: 8,
+//             },
+//         ],
+//     ];
+
+//     traffic_data
+// }
+
+// 8 by 16 fixed data
 pub fn fixed_data() -> Vec<Vec<TrafficState>> {
     let traffic_data: Vec<Vec<TrafficState>> = vec![
         vec![
             TrafficState {
-                main_from_prev: 14,
-                main_from_next: 13,
-                side: 3,
+                main_from_prev: 07,
+                main_from_next: 17,
+                side: 08,
             },
             TrafficState {
-                main_from_prev: 17,
-                main_from_next: 0,
-                side: 6,
+                main_from_prev: 18,
+                main_from_next: 00,
+                side: 04,
             },
             TrafficState {
                 main_from_prev: 12,
-                main_from_next: 0,
-                side: 5,
+                main_from_next: 00,
+                side: 06,
+            },
+            TrafficState {
+                main_from_prev: 08,
+                main_from_next: 00,
+                side: 06,
+            },
+            TrafficState {
+                main_from_prev: 09,
+                main_from_next: 00,
+                side: 08,
+            },
+            TrafficState {
+                main_from_prev: 18,
+                main_from_next: 00,
+                side: 09,
+            },
+            TrafficState {
+                main_from_prev: 08,
+                main_from_next: 00,
+                side: 05,
             },
             TrafficState {
                 main_from_prev: 13,
-                main_from_next: 0,
-                side: 7,
+                main_from_next: 00,
+                side: 07,
+            },
+            TrafficState {
+                main_from_prev: 17,
+                main_from_next: 00,
+                side: 07,
+            },
+            TrafficState {
+                main_from_prev: 09,
+                main_from_next: 00,
+                side: 05,
+            },
+            TrafficState {
+                main_from_prev: 15,
+                main_from_next: 00,
+                side: 08,
+            },
+            TrafficState {
+                main_from_prev: 13,
+                main_from_next: 00,
+                side: 09,
             },
             TrafficState {
                 main_from_prev: 16,
-                main_from_next: 0,
-                side: 6,
+                main_from_next: 00,
+                side: 03,
             },
             TrafficState {
-                main_from_prev: 16,
-                main_from_next: 0,
-                side: 7,
+                main_from_prev: 10,
+                main_from_next: 00,
+                side: 06,
             },
             TrafficState {
-                main_from_prev: 19,
-                main_from_next: 0,
-                side: 6,
+                main_from_prev: 17,
+                main_from_next: 00,
+                side: 06,
             },
             TrafficState {
-                main_from_prev: 16,
-                main_from_next: 0,
-                side: 7,
+                main_from_prev: 09,
+                main_from_next: 00,
+                side: 08,
             },
         ],
         vec![
             TrafficState {
-                main_from_prev: 12,
-                main_from_next: 19,
-                side: 7,
+                main_from_prev: 18,
+                main_from_next: 08,
+                side: 06,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 8,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 08,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 7,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 09,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 4,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 08,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 5,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 03,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 8,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 09,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 7,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 06,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 7,
-            },
-        ],
-        vec![
-            TrafficState {
-                main_from_prev: 19,
-                main_from_next: 9,
-                side: 6,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 09,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 5,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 06,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 4,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 08,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 8,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 03,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 3,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 04,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 8,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 03,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 9,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 07,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 5,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 06,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 07,
             },
         ],
         vec![
             TrafficState {
-                main_from_prev: 8,
-                main_from_next: 11,
-                side: 8,
+                main_from_prev: 18,
+                main_from_next: 13,
+                side: 04,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 3,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 05,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 8,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 04,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 3,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 06,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 5,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 03,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 4,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 08,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 5,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 05,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 3,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 05,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 06,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 06,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 09,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 03,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 07,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 08,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 05,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 09,
             },
         ],
         vec![
             TrafficState {
                 main_from_prev: 15,
+                main_from_next: 09,
+                side: 04,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 07,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 07,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 06,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 06,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 04,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 08,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 09,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 07,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 05,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 04,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 05,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 07,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 03,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 04,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 06,
+            },
+        ],
+        vec![
+            TrafficState {
+                main_from_prev: 17,
+                main_from_next: 11,
+                side: 03,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 06,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 08,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 03,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 04,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 06,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 03,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 07,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 07,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 03,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 07,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 03,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 05,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 07,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 05,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 03,
+            },
+        ],
+        vec![
+            TrafficState {
+                main_from_prev: 10,
                 main_from_next: 10,
-                side: 9,
+                side: 06,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 5,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 09,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 4,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 04,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 5,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 04,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 4,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 07,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 3,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 09,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 4,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 09,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 6,
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 09,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 06,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 04,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 05,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 03,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 05,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 06,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 03,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 08,
             },
         ],
         vec![
             TrafficState {
-                main_from_prev: 16,
+                main_from_prev: 07,
+                main_from_next: 14,
+                side: 05,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 05,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 07,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 09,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 04,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 08,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 07,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 03,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 08,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 07,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 05,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 04,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 04,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 04,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 05,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 00,
+                side: 09,
+            },
+        ],
+        vec![
+            TrafficState {
+                main_from_prev: 07,
                 main_from_next: 16,
-                side: 3,
+                side: 09,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 7,
+                main_from_prev: 00,
+                main_from_next: 16,
+                side: 07,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 8,
+                main_from_prev: 00,
+                main_from_next: 08,
+                side: 09,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 6,
+                main_from_prev: 00,
+                main_from_next: 08,
+                side: 04,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 8,
+                main_from_prev: 00,
+                main_from_next: 09,
+                side: 06,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 5,
-            },
-            TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 5,
-            },
-            TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 5,
-            },
-        ],
-        vec![
-            TrafficState {
-                main_from_prev: 19,
+                main_from_prev: 00,
                 main_from_next: 13,
-                side: 7,
+                side: 04,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 3,
-            },
-            TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 5,
-            },
-            TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 5,
-            },
-            TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 5,
-            },
-            TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 9,
-            },
-            TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 5,
-            },
-            TrafficState {
-                main_from_prev: 0,
-                main_from_next: 0,
-                side: 5,
-            },
-        ],
-        vec![
-            TrafficState {
-                main_from_prev: 14,
-                main_from_next: 9,
-                side: 6,
-            },
-            TrafficState {
-                main_from_prev: 0,
-                main_from_next: 17,
-                side: 6,
-            },
-            TrafficState {
-                main_from_prev: 0,
-                main_from_next: 18,
-                side: 5,
-            },
-            TrafficState {
-                main_from_prev: 0,
-                main_from_next: 18,
-                side: 3,
-            },
-            TrafficState {
-                main_from_prev: 0,
+                main_from_prev: 00,
                 main_from_next: 15,
-                side: 5,
+                side: 06,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 12,
-                side: 7,
+                main_from_prev: 00,
+                main_from_next: 16,
+                side: 06,
             },
             TrafficState {
-                main_from_prev: 0,
-                main_from_next: 12,
-                side: 4,
+                main_from_prev: 00,
+                main_from_next: 15,
+                side: 03,
             },
             TrafficState {
-                main_from_prev: 0,
+                main_from_prev: 00,
                 main_from_next: 13,
-                side: 8,
+                side: 03,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 11,
+                side: 07,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 07,
+                side: 04,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 17,
+                side: 06,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 13,
+                side: 07,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 10,
+                side: 07,
+            },
+            TrafficState {
+                main_from_prev: 00,
+                main_from_next: 11,
+                side: 09,
             },
         ],
     ];
