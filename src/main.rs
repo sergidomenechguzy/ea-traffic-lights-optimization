@@ -40,7 +40,7 @@ struct Args {
     plot: bool,
 
     /// Car traffic data to use for the traffic simulation
-    #[clap(long, default_value = "fixed", possible_values = ["fixed", "generate"])]
+    #[clap(short, long, default_value = "fixed", possible_values = ["fixed", "generate"])]
     data: String,
 
     /// Maximum number of cars possible on the main road
@@ -72,7 +72,7 @@ struct Args {
     probability_recombination: f64,
 
     /// Population size
-    #[clap(short, long, default_value_t = 50)]
+    #[clap(long, default_value_t = 50)]
     population_size: usize,
 
     /// Parent population size
@@ -80,8 +80,12 @@ struct Args {
     parents_size: usize,
 
     /// Tournament size
-    #[clap(short, long, default_value_t = 5)]
+    #[clap(long, default_value_t = 5)]
     tournament_size: usize,
+
+    /// Fitness value to use during optimization
+    #[clap(long, default_value = "difference", possible_values = ["difference", "driving_cars", "waiting_cars"])]
+    fitness_value: String,
 
     /// Number of intersections for the traffic simulation
     #[clap(long, default_value_t = 8)]
@@ -92,7 +96,7 @@ struct Args {
     timesteps: usize,
 
     /// Disable the max passthrough value to not limit cars per timestep
-    #[clap(short, long)]
+    #[clap(long)]
     disable_max_passthrough: bool,
 
     /// Amount of cars staying on the main road
@@ -140,6 +144,7 @@ fn main() {
         population_size: args.population_size,
         parents_size: args.parents_size,
         tournament_size: args.tournament_size,
+        fitness_value: args.fitness_value,
     };
 
     let simulation_data = SimulationData {

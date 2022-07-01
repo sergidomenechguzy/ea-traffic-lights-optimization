@@ -43,6 +43,7 @@ pub struct OptimizationData {
     pub population_size: usize,
     pub parents_size: usize,
     pub tournament_size: usize,
+    pub fitness_value: String,
 }
 
 #[derive(Clone)]

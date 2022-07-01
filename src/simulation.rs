@@ -1,4 +1,5 @@
 use crate::data::build_empty_traffic_state;
+use crate::data::OptimizationData;
 use crate::data::SimulationData;
 use crate::data::TrafficState;
 use bit_vec::BitVec;
@@ -155,9 +156,24 @@ fn step(
     next_traffic
 }
 
-pub fn simulate(simulation_data: &SimulationData, candidate: &Vec<BitVec>) -> i32 {
-    let mut value = 0;
-    let mut value2 = 0;
+fn fitness(optimization_data: &OptimizationData, driving_cars: i32, waiting_cars: i32) -> i32 {
+    if optimization_data.fitness_value == "difference" {
+        return driving_cars - waiting_cars;
+    } else if optimization_data.fitness_value == "driving_cars" {
+        return driving_cars;
+    } else if optimization_data.fitness_value == "waiting_cars" {
+        return -waiting_cars;
+    }
+    0
+}
+
+pub fn simulate(
+    simulation_data: &SimulationData,
+    optimization_data: &OptimizationData,
+    candidate: &Vec<BitVec>,
+) -> i32 {
+    let mut driving_cars = 0;
+    let mut waiting_cars = 0;
     let mut current_step = extract_step(&simulation_data.traffic_data, 0);
     // println!("Initial Data:");
     // println!("{:?}", simulation_data.traffic_data);
@@ -169,24 +185,25 @@ pub fn simulate(simulation_data: &SimulationData, candidate: &Vec<BitVec>) -> i3
             candidate,
             &current_step,
             t,
-            &mut value,
-            &mut value2,
+            &mut driving_cars,
+            &mut waiting_cars,
         );
         // println!("Step {}:", t + 1);
         // println!("{:?}", current_step);
     }
     // println!("Current step: {:?}", current_step);
-    value - value2
+    fitness(optimization_data, driving_cars, waiting_cars)
 }
 
 pub fn simulate_population(
     simulation_data: &SimulationData,
+    optimization_data: &OptimizationData,
     population: &Vec<Vec<BitVec>>,
 ) -> Vec<i32> {
     let mut values = vec![0; population.len()];
 
     for i in 0..population.len() {
-        values[i] = simulate(simulation_data, &population[i])
+        values[i] = simulate(simulation_data, optimization_data, &population[i])
     }
 
     values

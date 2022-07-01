@@ -131,7 +131,7 @@ fn hillclimb(
 ) -> i32 {
     let mut candidate =
         generate_candidate(simulation_data.intersections, simulation_data.timesteps);
-    let mut candidate_value = simulate(&simulation_data, &candidate);
+    let mut candidate_value = simulate(simulation_data, optimization_data, &candidate);
     if !configuration_data.silent {
         println!("0:\t{:?}\t{}", candidate, candidate_value);
     }
@@ -139,7 +139,8 @@ fn hillclimb(
     for it in 0..optimization_data.iterations {
         let mutated_candidate = mutation(&candidate, optimization_data);
 
-        let mutated_candidate_value = simulate(&simulation_data, &mutated_candidate);
+        let mutated_candidate_value =
+            simulate(simulation_data, optimization_data, &mutated_candidate);
         if candidate_value < mutated_candidate_value {
             candidate = mutated_candidate;
             candidate_value = mutated_candidate_value;
@@ -165,7 +166,8 @@ fn genetic_algorithm(
         simulation_data.intersections,
         simulation_data.timesteps,
     );
-    let mut population_values = simulate_population(simulation_data, &population);
+    let mut population_values =
+        simulate_population(simulation_data, optimization_data, &population);
     let (mut best, mut best_value, _) =
         get_best_and_worst_candidate(&population, &population_values);
     if !configuration_data.silent {
@@ -185,7 +187,8 @@ fn genetic_algorithm(
             simulation_data,
         );
 
-        let next_population_values = simulate_population(simulation_data, &next_population);
+        let next_population_values =
+            simulate_population(simulation_data, optimization_data, &next_population);
 
         population = next_population;
         population_values = next_population_values;
