@@ -84,7 +84,7 @@ struct Args {
     tournament_size: usize,
 
     /// Fitness value to use during optimization
-    #[clap(long, default_value = "difference", possible_values = ["difference", "driving_cars", "waiting_cars"])]
+    #[clap(long, default_value = "ratio", possible_values = ["ratio", "difference", "driving_cars", "waiting_cars"])]
     fitness_value: String,
 
     /// Number of intersections for the traffic simulation
@@ -159,7 +159,7 @@ fn main() {
     };
 
     if args.benchmark {
-        let mut accumulated_results = 0;
+        let mut accumulated_results = 0.0;
         for _ in 0..args.benchmark_iterations {
             accumulated_results +=
                 optimize(&configuration_data, &optimization_data, &simulation_data);
@@ -167,7 +167,7 @@ fn main() {
         println!(
             "Mean of best individual over {} iterations: {}",
             args.benchmark_iterations,
-            accumulated_results / args.benchmark_iterations
+            accumulated_results / args.benchmark_iterations as f64
         );
     } else {
         optimize(&configuration_data, &optimization_data, &simulation_data);

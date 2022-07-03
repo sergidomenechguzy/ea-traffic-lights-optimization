@@ -5,8 +5,8 @@ use crate::data::OptimizationData;
 
 pub fn get_best_and_worst_candidate(
     population: &Vec<Vec<BitVec>>,
-    values: &Vec<i32>,
-) -> (Vec<BitVec>, i32, i32) {
+    values: &Vec<f64>,
+) -> (Vec<BitVec>, f64, f64) {
     let mut highest_index: usize = 0;
     let mut lowest_index: usize = 0;
 
@@ -26,32 +26,8 @@ pub fn get_best_and_worst_candidate(
     )
 }
 
-pub fn get_mean_value(values: &Vec<i32>) -> i32 {
-    values.iter().sum::<i32>() / values.len() as i32
-}
-
-pub fn calculate_skaled_fitness(population_values: &Vec<i32>, best: &i32, worst: &i32) -> Vec<f64> {
-    let fitness: Vec<f64> = population_values
-        .iter()
-        .map(|&value| (value - worst) as f64 / (best - worst) as f64)
-        .collect();
-    fitness
-}
-
-pub fn calculate_rank_based_fitness(population_values: &Vec<i32>) -> Vec<f64> {
-    let mut ordered_values: Vec<(usize, i32)> = Vec::with_capacity(population_values.len());
-
-    for (index, value) in population_values.iter().enumerate() {
-        ordered_values.push((index, value.clone()));
-    }
-    ordered_values.sort_by(|(_, a_value), (_, b_value)| b_value.cmp(a_value));
-
-    let mut fitness: Vec<f64> = vec![0.0; population_values.len()];
-    for (index, (original_index, _)) in ordered_values.iter().enumerate() {
-        fitness[*original_index] = (2.0 / population_values.len() as f64)
-            * (1.0 - ((index + 1) as f64 - 1.0) / (population_values.len() as f64 - 1.0));
-    }
-    fitness
+pub fn get_mean_value(values: &Vec<f64>) -> f64 {
+    values.iter().sum::<f64>() / values.len() as f64
 }
 
 pub fn distinct_random(min: usize, max: usize, count: usize) -> Vec<usize> {
@@ -67,7 +43,7 @@ pub fn distinct_random(min: usize, max: usize, count: usize) -> Vec<usize> {
 }
 
 pub fn tournament(
-    population_values: &Vec<i32>,
+    population_values: &Vec<f64>,
     optimization_data: &OptimizationData,
 ) -> Vec<usize> {
     let mut rng = rand::thread_rng();

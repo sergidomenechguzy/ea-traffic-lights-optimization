@@ -156,22 +156,24 @@ fn step(
     next_traffic
 }
 
-fn fitness(optimization_data: &OptimizationData, driving_cars: i32, waiting_cars: i32) -> i32 {
+fn fitness(optimization_data: &OptimizationData, driving_cars: i32, waiting_cars: i32) -> f64 {
     if optimization_data.fitness_value == "difference" {
-        return driving_cars - waiting_cars;
+        return (driving_cars - waiting_cars) as f64;
+    } else if optimization_data.fitness_value == "ratio" {
+        return (driving_cars as f64) / (waiting_cars as f64);
     } else if optimization_data.fitness_value == "driving_cars" {
-        return driving_cars;
+        return driving_cars as f64;
     } else if optimization_data.fitness_value == "waiting_cars" {
-        return -waiting_cars;
+        return -waiting_cars as f64;
     }
-    0
+    0.0
 }
 
 pub fn simulate(
     simulation_data: &SimulationData,
     optimization_data: &OptimizationData,
     candidate: &Vec<BitVec>,
-) -> i32 {
+) -> f64 {
     let mut driving_cars = 0;
     let mut waiting_cars = 0;
     let mut current_step = extract_step(&simulation_data.traffic_data, 0);
@@ -199,8 +201,8 @@ pub fn simulate_population(
     simulation_data: &SimulationData,
     optimization_data: &OptimizationData,
     population: &Vec<Vec<BitVec>>,
-) -> Vec<i32> {
-    let mut values = vec![0; population.len()];
+) -> Vec<f64> {
+    let mut values = vec![0.0; population.len()];
 
     for i in 0..population.len() {
         values[i] = simulate(simulation_data, optimization_data, &population[i])

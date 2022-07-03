@@ -102,7 +102,7 @@ fn recombination(
 
 fn selection(
     population: &Vec<Vec<BitVec>>,
-    population_values: &Vec<i32>,
+    population_values: &Vec<f64>,
     optimization_data: &OptimizationData,
     simulation_data: &SimulationData,
 ) -> Vec<Vec<BitVec>> {
@@ -128,7 +128,7 @@ fn hillclimb(
     configuration_data: &ConfigurationData,
     optimization_data: &OptimizationData,
     simulation_data: &SimulationData,
-) -> i32 {
+) -> f64 {
     let mut candidate =
         generate_candidate(simulation_data.intersections, simulation_data.timesteps);
     let mut candidate_value = simulate(simulation_data, optimization_data, &candidate);
@@ -160,7 +160,7 @@ fn genetic_algorithm(
     configuration_data: &ConfigurationData,
     optimization_data: &OptimizationData,
     simulation_data: &SimulationData,
-) -> i32 {
+) -> f64 {
     let mut population = generate_population(
         optimization_data.population_size,
         simulation_data.intersections,
@@ -225,11 +225,11 @@ pub fn optimize(
     configuration_data: &ConfigurationData,
     optimization_data: &OptimizationData,
     simulation_data: &SimulationData,
-) -> i32 {
+) -> f64 {
     if optimization_data.optimization == "genetic" {
         return genetic_algorithm(configuration_data, optimization_data, simulation_data);
     } else if optimization_data.optimization == "hillclimb" {
         return hillclimb(configuration_data, optimization_data, simulation_data);
     }
-    0
+    0.0
 }
