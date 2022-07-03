@@ -15,6 +15,8 @@ pub struct ConfigurationData {
 
 #[derive(Debug)]
 pub struct GenerationData {
+    pub intersections: usize,
+    pub timesteps: usize,
     pub main_max_count: i32,
     pub side_max_count: i32,
     pub main_min_count: i32,
@@ -23,8 +25,6 @@ pub struct GenerationData {
 
 #[derive(Debug)]
 pub struct SimulationData {
-    pub intersections: usize,
-    pub timesteps: usize,
     pub traffic_data: Vec<Vec<TrafficState>>,
     pub disable_max_passthrough: bool,
     pub main_max_passthrough: i32,
@@ -123,22 +123,18 @@ pub fn calculate_side_max_passthrough(max: i32) -> i32 {
     ((max as f64) * 2.0).round() as i32
 }
 
-pub fn generate_data(
-    intersections: usize,
-    timesteps: usize,
-    generation_data: &GenerationData,
-) -> Vec<Vec<TrafficState>> {
-    let mut data: Vec<Vec<TrafficState>> = Vec::with_capacity(intersections);
-    for index in 0..intersections {
-        let mut traffic_data: Vec<TrafficState> = Vec::with_capacity(timesteps);
+pub fn generate_data(generation_data: &GenerationData) -> Vec<Vec<TrafficState>> {
+    let mut data: Vec<Vec<TrafficState>> = Vec::with_capacity(generation_data.intersections);
+    for index in 0..generation_data.intersections {
+        let mut traffic_data: Vec<TrafficState> = Vec::with_capacity(generation_data.timesteps);
 
         let random_initial_traffic = build_traffic_state_initial(generation_data);
         traffic_data.push(random_initial_traffic);
 
-        for _ in 1..timesteps {
+        for _ in 1..generation_data.timesteps {
             if index == 0 {
                 traffic_data.push(build_traffic_state_first_intersection(generation_data));
-            } else if index == intersections - 1 {
+            } else if index == generation_data.intersections - 1 {
                 traffic_data.push(build_traffic_state_last_intersection(generation_data));
             } else {
                 traffic_data.push(build_traffic_state_base(generation_data));

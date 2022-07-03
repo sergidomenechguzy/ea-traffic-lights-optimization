@@ -1,6 +1,7 @@
 use crate::data::generate_candidate;
 use crate::data::generate_population;
 use crate::data::ConfigurationData;
+use crate::data::GenerationData;
 use crate::data::OptimizationData;
 use crate::data::SimulationData;
 use crate::simulation::simulate;
@@ -61,15 +62,15 @@ fn mutation(candidate: &Vec<BitVec>, optimization_data: &OptimizationData) -> Ve
 fn one_point_crossover(
     input1: &Vec<BitVec>,
     input2: &Vec<BitVec>,
-    simulation_data: &SimulationData,
+    generation_data: &GenerationData,
 ) -> (Vec<BitVec>, Vec<BitVec>) {
     let mut rng = rand::thread_rng();
-    let random_index = rng.gen_range(1..simulation_data.timesteps);
+    let random_index = rng.gen_range(1..generation_data.timesteps);
 
-    let mut crossover1: Vec<BitVec> = Vec::with_capacity(simulation_data.intersections);
-    let mut crossover2: Vec<BitVec> = Vec::with_capacity(simulation_data.intersections);
+    let mut crossover1: Vec<BitVec> = Vec::with_capacity(generation_data.intersections);
+    let mut crossover2: Vec<BitVec> = Vec::with_capacity(generation_data.intersections);
 
-    for index in 0..simulation_data.intersections {
+    for index in 0..generation_data.intersections {
         let mut bitvec1 = input1[index].clone();
         let mut bitvec2 = input2[index].clone();
 
@@ -90,12 +91,12 @@ fn recombination(
     candidate1: &Vec<BitVec>,
     candidate2: &Vec<BitVec>,
     optimization_data: &OptimizationData,
-    simulation_data: &SimulationData,
+    generation_data: &GenerationData,
 ) -> (Vec<BitVec>, Vec<BitVec>) {
     let mut rng = rand::thread_rng();
 
     if rng.gen::<f64>() < optimization_data.probability_recombination {
-        return one_point_crossover(candidate1, candidate2, simulation_data);
+        return one_point_crossover(candidate1, candidate2, generation_data);
     }
     (candidate1.clone(), candidate2.clone())
 }
@@ -104,7 +105,7 @@ fn selection(
     population: &Vec<Vec<BitVec>>,
     population_values: &Vec<f64>,
     optimization_data: &OptimizationData,
-    simulation_data: &SimulationData,
+    generation_data: &GenerationData,
 ) -> Vec<Vec<BitVec>> {
     let selected = tournament(population_values, optimization_data);
     let mut next_population: Vec<Vec<BitVec>> =
@@ -115,7 +116,7 @@ fn selection(
             &population[selected[randoms[0]]],
             &population[selected[randoms[1]]],
             optimization_data,
-            simulation_data,
+            generation_data,
         );
 
         next_population.push(mutation(&recomb1, optimization_data));
@@ -128,10 +129,16 @@ fn hillclimb(
     configuration_data: &ConfigurationData,
     optimization_data: &OptimizationData,
     simulation_data: &SimulationData,
+    generation_data: &GenerationData,
 ) -> f64 {
     let mut candidate =
-        generate_candidate(simulation_data.intersections, simulation_data.timesteps);
-    let mut candidate_value = simulate(simulation_data, optimization_data, &candidate);
+        generate_candidate(generation_data.intersections, generation_data.timesteps);
+    let mut candidate_value = simulate(
+        &candidate,
+        simulation_data,
+        optimization_data,
+        generation_data,
+    );
     if !configuration_data.silent {
         println!("0:\t{:?}\t{}", candidate, candidate_value);
     }
@@ -139,8 +146,12 @@ fn hillclimb(
     for it in 0..optimization_data.iterations {
         let mutated_candidate = mutation(&candidate, optimization_data);
 
-        let mutated_candidate_value =
-            simulate(simulation_data, optimization_data, &mutated_candidate);
+        let mutated_candidate_value = simulate(
+            &mutated_candidate,
+            simulation_data,
+            optimization_data,
+            generation_data,
+        );
         if candidate_value < mutated_candidate_value {
             candidate = mutated_candidate;
             candidate_value = mutated_candidate_value;
@@ -160,14 +171,19 @@ fn genetic_algorithm(
     configuration_data: &ConfigurationData,
     optimization_data: &OptimizationData,
     simulation_data: &SimulationData,
+    generation_data: &GenerationData,
 ) -> f64 {
     let mut population = generate_population(
         optimization_data.population_size,
-        simulation_data.intersections,
-        simulation_data.timesteps,
+        generation_data.intersections,
+        generation_data.timesteps,
     );
-    let mut population_values =
-        simulate_population(simulation_data, optimization_data, &population);
+    let mut population_values = simulate_population(
+        &population,
+        simulation_data,
+        optimization_data,
+        generation_data,
+    );
     let (mut best, mut best_value, _) =
         get_best_and_worst_candidate(&population, &population_values);
     if !configuration_data.silent {
@@ -184,11 +200,15 @@ fn genetic_algorithm(
             &population,
             &population_values,
             optimization_data,
-            simulation_data,
+            generation_data,
         );
 
-        let next_population_values =
-            simulate_population(simulation_data, optimization_data, &next_population);
+        let next_population_values = simulate_population(
+            &next_population,
+            simulation_data,
+            optimization_data,
+            generation_data,
+        );
 
         population = next_population;
         population_values = next_population_values;
@@ -225,11 +245,22 @@ pub fn optimize(
     configuration_data: &ConfigurationData,
     optimization_data: &OptimizationData,
     simulation_data: &SimulationData,
+    generation_data: &GenerationData,
 ) -> f64 {
     if optimization_data.optimization == "genetic" {
-        return genetic_algorithm(configuration_data, optimization_data, simulation_data);
+        return genetic_algorithm(
+            configuration_data,
+            optimization_data,
+            simulation_data,
+            generation_data,
+        );
     } else if optimization_data.optimization == "hillclimb" {
-        return hillclimb(configuration_data, optimization_data, simulation_data);
+        return hillclimb(
+            configuration_data,
+            optimization_data,
+            simulation_data,
+            generation_data,
+        );
     }
     0.0
 }

@@ -1,4 +1,5 @@
 use crate::data::build_empty_traffic_state;
+use crate::data::GenerationData;
 use crate::data::OptimizationData;
 use crate::data::SimulationData;
 use crate::data::TrafficState;
@@ -170,9 +171,10 @@ fn fitness(optimization_data: &OptimizationData, driving_cars: i32, waiting_cars
 }
 
 pub fn simulate(
+    candidate: &Vec<BitVec>,
     simulation_data: &SimulationData,
     optimization_data: &OptimizationData,
-    candidate: &Vec<BitVec>,
+    generation_data: &GenerationData,
 ) -> f64 {
     let mut driving_cars = 0;
     let mut waiting_cars = 0;
@@ -181,7 +183,7 @@ pub fn simulate(
     // println!("{:?}", simulation_data.traffic_data);
     // println!("Step 0:");
     // println!("{:?}", current_step);
-    for t in 0..simulation_data.timesteps {
+    for t in 0..generation_data.timesteps {
         current_step = step(
             simulation_data,
             candidate,
@@ -198,14 +200,20 @@ pub fn simulate(
 }
 
 pub fn simulate_population(
+    population: &Vec<Vec<BitVec>>,
     simulation_data: &SimulationData,
     optimization_data: &OptimizationData,
-    population: &Vec<Vec<BitVec>>,
+    generation_data: &GenerationData,
 ) -> Vec<f64> {
     let mut values = vec![0.0; population.len()];
 
     for i in 0..population.len() {
-        values[i] = simulate(simulation_data, optimization_data, &population[i])
+        values[i] = simulate(
+            &population[i],
+            simulation_data,
+            optimization_data,
+            generation_data,
+        )
     }
 
     values

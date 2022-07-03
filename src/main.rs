@@ -121,6 +121,8 @@ fn main() {
     };
 
     let generation_data = GenerationData {
+        intersections: args.intersections,
+        timesteps: args.timesteps,
         main_max_count: args.main_max_count,
         side_max_count: args.side_max_count,
         main_min_count: calculate_min_count(args.main_max_count),
@@ -129,7 +131,7 @@ fn main() {
 
     let traffic_data;
     if configuration_data.data == "generate" {
-        traffic_data = generate_data(args.intersections, args.timesteps, &generation_data);
+        traffic_data = generate_data(&generation_data);
         println!("{:?}", traffic_data);
     } else {
         traffic_data = fixed_data();
@@ -148,8 +150,6 @@ fn main() {
     };
 
     let simulation_data = SimulationData {
-        intersections: args.intersections,
-        timesteps: args.timesteps,
         traffic_data,
         disable_max_passthrough: args.disable_max_passthrough,
         main_max_passthrough: calculate_main_max_passthrough(args.main_max_count),
@@ -161,8 +161,12 @@ fn main() {
     if args.benchmark {
         let mut accumulated_results = 0.0;
         for _ in 0..args.benchmark_iterations {
-            accumulated_results +=
-                optimize(&configuration_data, &optimization_data, &simulation_data);
+            accumulated_results += optimize(
+                &configuration_data,
+                &optimization_data,
+                &simulation_data,
+                &generation_data,
+            );
         }
         println!(
             "Mean of best individual over {} iterations: {}",
@@ -170,6 +174,11 @@ fn main() {
             accumulated_results / args.benchmark_iterations as f64
         );
     } else {
-        optimize(&configuration_data, &optimization_data, &simulation_data);
+        optimize(
+            &configuration_data,
+            &optimization_data,
+            &simulation_data,
+            &generation_data,
+        );
     }
 }
