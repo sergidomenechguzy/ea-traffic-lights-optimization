@@ -138,6 +138,7 @@ fn hillclimb(
         simulation_data,
         optimization_data,
         generation_data,
+        false,
     );
     if !configuration_data.silent {
         println!("0:\t{:?}\t{}", candidate, candidate_value);
@@ -151,6 +152,7 @@ fn hillclimb(
             simulation_data,
             optimization_data,
             generation_data,
+            false,
         );
         if candidate_value < mutated_candidate_value {
             candidate = mutated_candidate;
@@ -164,6 +166,15 @@ fn hillclimb(
 
     println!("Final candidate:");
     println!("{:?}\t{}", candidate, candidate_value);
+    if configuration_data.print_final_simulation {
+        simulate(
+            &candidate,
+            simulation_data,
+            optimization_data,
+            generation_data,
+            true,
+        );
+    }
     candidate_value
 }
 
@@ -238,6 +249,15 @@ fn genetic_algorithm(
         best_value,
         get_mean_value(&population_values)
     );
+    if configuration_data.print_final_simulation {
+        simulate(
+            &best,
+            simulation_data,
+            optimization_data,
+            generation_data,
+            true,
+        );
+    }
     best_value
 }
 

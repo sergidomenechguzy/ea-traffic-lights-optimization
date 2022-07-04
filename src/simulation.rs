@@ -175,14 +175,15 @@ pub fn simulate(
     simulation_data: &SimulationData,
     optimization_data: &OptimizationData,
     generation_data: &GenerationData,
+    print_simulation: bool,
 ) -> f64 {
     let mut driving_cars = 0;
     let mut waiting_cars = 0;
     let mut current_step = extract_step(&simulation_data.traffic_data, 0);
-    // println!("Initial Data:");
-    // println!("{:?}", simulation_data.traffic_data);
-    // println!("Step 0:");
-    // println!("{:?}", current_step);
+    if print_simulation {
+        println!("Step 0:");
+        println!("{:?}", current_step);
+    }
     for t in 0..generation_data.timesteps {
         current_step = step(
             simulation_data,
@@ -192,10 +193,11 @@ pub fn simulate(
             &mut driving_cars,
             &mut waiting_cars,
         );
-        // println!("Step {}:", t + 1);
-        // println!("{:?}", current_step);
+        if print_simulation {
+            println!("Step {}:", t + 1);
+            println!("{:?}", current_step);
+        }
     }
-    // println!("Current step: {:?}", current_step);
     fitness(optimization_data, driving_cars, waiting_cars)
 }
 
@@ -213,6 +215,7 @@ pub fn simulate_population(
             simulation_data,
             optimization_data,
             generation_data,
+            false,
         )
     }
 
