@@ -1,6 +1,5 @@
-use crate::data::calculate_main_max_passthrough;
+use crate::data::calculate_max_passthrough;
 use crate::data::calculate_min_count;
-use crate::data::calculate_side_max_passthrough;
 use crate::data::fixed_data;
 use crate::data::generate_data;
 use crate::data::ConfigurationData;
@@ -95,6 +94,10 @@ struct Args {
     #[clap(long, default_value_t = 16)]
     timesteps: usize,
 
+    /// Disable the increasing passthrough to keep max passthrough always the same
+    #[clap(long)]
+    disable_increasing_passthrough: bool,
+
     /// Disable the max passthrough value to not limit cars per timestep
     #[clap(long)]
     disable_max_passthrough: bool,
@@ -151,9 +154,9 @@ fn main() {
 
     let simulation_data = SimulationData {
         traffic_data,
+        disable_increasing_passthrough: args.disable_increasing_passthrough,
         disable_max_passthrough: args.disable_max_passthrough,
-        main_max_passthrough: calculate_main_max_passthrough(args.main_max_count),
-        side_max_passthrough: calculate_side_max_passthrough(args.side_max_count),
+        max_passthrough: calculate_max_passthrough(args.main_max_count),
         main_percentage: args.main_percentage,
         side_percentage: args.side_percentage,
     };

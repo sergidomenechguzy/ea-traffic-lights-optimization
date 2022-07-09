@@ -26,9 +26,9 @@ pub struct GenerationData {
 #[derive(Debug)]
 pub struct SimulationData {
     pub traffic_data: Vec<Vec<TrafficState>>,
+    pub disable_increasing_passthrough: bool,
     pub disable_max_passthrough: bool,
-    pub main_max_passthrough: i32,
-    pub side_max_passthrough: i32,
+    pub max_passthrough: i32,
     pub main_percentage: f64,
     pub side_percentage: f64,
 }
@@ -115,12 +115,12 @@ pub fn calculate_min_count(max: i32) -> i32 {
     ((max as f64) / 3.0).round() as i32
 }
 
-pub fn calculate_main_max_passthrough(max: i32) -> i32 {
-    ((max as f64) * 0.75).round() as i32
+pub fn calculate_max_passthrough(max: i32) -> i32 {
+    ((max as f64) * 0.8).round() as i32
 }
 
-pub fn calculate_side_max_passthrough(max: i32) -> i32 {
-    ((max as f64) * 2.0).round() as i32
+pub fn calculate_increased_max_passthrough(max: i32) -> i32 {
+    ((max as f64) * 1.4).round() as i32
 }
 
 pub fn generate_data(generation_data: &GenerationData) -> Vec<Vec<TrafficState>> {

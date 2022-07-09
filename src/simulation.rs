@@ -1,4 +1,5 @@
 use crate::data::build_empty_traffic_state;
+use crate::data::calculate_increased_max_passthrough;
 use crate::data::GenerationData;
 use crate::data::OptimizationData;
 use crate::data::SimulationData;
@@ -27,19 +28,14 @@ fn apply_main(
     index: usize,
     driving_cars: &mut i32,
     waiting_cars: &mut i32,
+    max_passthrough: i32,
     simulation_data: &SimulationData,
 ) {
     let main_from_prev;
     let main_from_next;
     if !simulation_data.disable_max_passthrough {
-        main_from_prev = min(
-            simulation_data.main_max_passthrough,
-            current_traffic.main_from_prev,
-        );
-        main_from_next = min(
-            simulation_data.main_max_passthrough,
-            current_traffic.main_from_next,
-        );
+        main_from_prev = min(max_passthrough, current_traffic.main_from_prev);
+        main_from_next = min(max_passthrough, current_traffic.main_from_next);
     } else {
         main_from_prev = current_traffic.main_from_prev;
         main_from_next = current_traffic.main_from_next;
@@ -84,11 +80,12 @@ fn apply_side(
     index: usize,
     driving_cars: &mut i32,
     waiting_cars: &mut i32,
+    max_passthrough: i32,
     simulation_data: &SimulationData,
 ) {
     let side;
     if !simulation_data.disable_max_passthrough {
-        side = min(simulation_data.side_max_passthrough, current_traffic.side);
+        side = min(max_passthrough, current_traffic.side);
     } else {
         side = current_traffic.side;
     }
@@ -135,6 +132,10 @@ fn step(
 ) -> Vec<TrafficState> {
     let mut next_traffic = extract_step(&simulation_data.traffic_data, t + 1);
     for (index, traffic) in current_traffic.iter().enumerate() {
+        let mut max_passthrough = simulation_data.max_passthrough;
+        if t > 0 && (traffic_lights[index][t - 1] == traffic_lights[index][t]) {
+            max_passthrough = calculate_increased_max_passthrough(simulation_data.max_passthrough);
+        }
         match traffic_lights[index][t] {
             true => apply_main(
                 &mut next_traffic,
@@ -142,6 +143,7 @@ fn step(
                 index,
                 driving_cars,
                 waiting_cars,
+                max_passthrough,
                 simulation_data,
             ),
             false => apply_side(
@@ -150,6 +152,7 @@ fn step(
                 index,
                 driving_cars,
                 waiting_cars,
+                max_passthrough,
                 simulation_data,
             ),
         }
