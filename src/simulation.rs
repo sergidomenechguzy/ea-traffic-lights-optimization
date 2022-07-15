@@ -133,7 +133,10 @@ fn step(
     let mut next_traffic = extract_step(&simulation_data.traffic_data, t + 1);
     for (index, traffic) in current_traffic.iter().enumerate() {
         let mut max_passthrough = simulation_data.max_passthrough;
-        if t > 0 && (traffic_lights[index][t - 1] == traffic_lights[index][t]) {
+        if !simulation_data.disable_increasing_passthrough
+            && t > 0
+            && (traffic_lights[index][t - 1] == traffic_lights[index][t])
+        {
             max_passthrough = calculate_increased_max_passthrough(simulation_data.max_passthrough);
         }
         match traffic_lights[index][t] {

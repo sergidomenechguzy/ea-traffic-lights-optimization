@@ -3,10 +3,7 @@ use rand::Rng;
 
 use crate::data::OptimizationData;
 
-pub fn get_best_and_worst_candidate(
-    population: &Vec<Vec<BitVec>>,
-    values: &Vec<f64>,
-) -> (Vec<BitVec>, f64, f64) {
+pub fn get_highest_and_lowest(values: &Vec<f64>) -> (usize, usize) {
     let mut highest_index: usize = 0;
     let mut lowest_index: usize = 0;
 
@@ -18,6 +15,15 @@ pub fn get_best_and_worst_candidate(
             lowest_index = i;
         }
     }
+
+    (highest_index, lowest_index)
+}
+
+pub fn get_best_and_worst_candidate(
+    population: &Vec<Vec<BitVec>>,
+    values: &Vec<f64>,
+) -> (Vec<BitVec>, f64, f64) {
+    let (highest_index, lowest_index) = get_highest_and_lowest(values);
 
     (
         population[highest_index].clone(),

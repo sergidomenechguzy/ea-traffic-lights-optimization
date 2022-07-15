@@ -1,13 +1,15 @@
-use crate::data::calculate_max_passthrough;
-use crate::data::calculate_min_count;
-use crate::data::fixed_data;
-use crate::data::generate_data;
-use crate::data::ConfigurationData;
-use crate::data::GenerationData;
-use crate::data::OptimizationData;
-use crate::data::SimulationData;
+use crate::data::{
+    calculate_max_passthrough, calculate_min_count, fixed_data, generate_data, ConfigurationData,
+    GenerationData, OptimizationData, SimulationData,
+};
+use chrono::{DateTime, Local};
 use clap::Parser;
 use optimization::optimize;
+use plotters::prelude::{
+    BitMapBackend, ChartBuilder, IntoDrawingArea, LabelAreaPosition, LineSeries,
+};
+use plotters::style::{BLUE, WHITE};
+use utils::get_highest_and_lowest;
 
 pub mod data;
 pub mod optimization;
@@ -35,7 +37,7 @@ struct Args {
     benchmark_iterations: i32,
 
     /// Draw plot of best values of each iteration
-    #[clap(long)]
+    #[clap(short, long)]
     plot: bool,
 
     /// Car traffic data to use for the traffic simulation
@@ -161,6 +163,11 @@ fn main() {
         side_percentage: args.side_percentage,
     };
 
+    let mut plot_data: Vec<f64> = Vec::new();
+    if args.plot {
+        plot_data = Vec::with_capacity(args.iterations);
+    }
+
     if args.benchmark {
         let mut accumulated_results = 0.0;
         for _ in 0..args.benchmark_iterations {
@@ -169,6 +176,7 @@ fn main() {
                 &optimization_data,
                 &simulation_data,
                 &generation_data,
+                &mut plot_data,
             );
         }
         println!(
@@ -182,6 +190,36 @@ fn main() {
             &optimization_data,
             &simulation_data,
             &generation_data,
+            &mut plot_data,
         );
+    }
+
+    if args.plot {
+        let now: DateTime<Local> = Local::now();
+        let mut plot_path = String::from("plots/");
+        plot_path.push_str(&now.format("%F-%H-%M-%S").to_string());
+        plot_path.push_str(".png");
+
+        let plot_draw_area = BitMapBackend::new(&plot_path, (800, 600)).into_drawing_area();
+        plot_draw_area.fill(&WHITE).unwrap();
+
+        let (hightest, lowest) = get_highest_and_lowest(&plot_data);
+
+        let mut ctx = ChartBuilder::on(&plot_draw_area)
+            .margin(15)
+            .set_label_area_size(LabelAreaPosition::Bottom, 40)
+            .set_label_area_size(LabelAreaPosition::Left, 40)
+            // .caption("Line Plot Demo", ("sans-serif", 40))
+            .build_cartesian_2d(0..args.iterations, plot_data[lowest]..plot_data[hightest])
+            // .build_cartesian_2d(0..args.iterations, plot_data[lowest]..plot_data[hightest])
+            .unwrap();
+
+        ctx.configure_mesh().draw().unwrap();
+
+        ctx.draw_series(LineSeries::new(
+            (0..args.iterations).map(|x| (x, plot_data[x])),
+            &BLUE,
+        ))
+        .unwrap();
     }
 }

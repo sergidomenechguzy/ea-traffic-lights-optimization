@@ -130,6 +130,7 @@ fn hillclimb(
     optimization_data: &OptimizationData,
     simulation_data: &SimulationData,
     generation_data: &GenerationData,
+    plot_data: &mut Vec<f64>,
 ) -> f64 {
     let mut candidate =
         generate_candidate(generation_data.intersections, generation_data.timesteps);
@@ -142,6 +143,9 @@ fn hillclimb(
     );
     if !configuration_data.silent {
         println!("0:\t{:?}\t{}", candidate, candidate_value);
+    }
+    if configuration_data.plot {
+        plot_data.push(candidate_value)
     }
 
     for it in 0..optimization_data.iterations {
@@ -161,6 +165,9 @@ fn hillclimb(
             if !configuration_data.silent {
                 println!("{}:\t{:?}\t{}", it + 1, candidate, candidate_value);
             }
+        }
+        if configuration_data.plot {
+            plot_data.push(candidate_value)
         }
     }
 
@@ -183,6 +190,7 @@ fn genetic_algorithm(
     optimization_data: &OptimizationData,
     simulation_data: &SimulationData,
     generation_data: &GenerationData,
+    plot_data: &mut Vec<f64>,
 ) -> f64 {
     let mut population = generate_population(
         optimization_data.population_size,
@@ -204,6 +212,9 @@ fn genetic_algorithm(
             best_value,
             get_mean_value(&population_values)
         );
+    }
+    if configuration_data.plot {
+        plot_data.push(best_value)
     }
 
     for it in 0..optimization_data.iterations {
@@ -240,6 +251,9 @@ fn genetic_algorithm(
                 );
             }
         }
+        if configuration_data.plot {
+            plot_data.push(best_value)
+        }
     }
 
     println!("Final candidate:");
@@ -266,6 +280,7 @@ pub fn optimize(
     optimization_data: &OptimizationData,
     simulation_data: &SimulationData,
     generation_data: &GenerationData,
+    plot_data: &mut Vec<f64>,
 ) -> f64 {
     if optimization_data.optimization == "genetic" {
         return genetic_algorithm(
@@ -273,6 +288,7 @@ pub fn optimize(
             optimization_data,
             simulation_data,
             generation_data,
+            plot_data,
         );
     } else if optimization_data.optimization == "hillclimb" {
         return hillclimb(
@@ -280,6 +296,7 @@ pub fn optimize(
             optimization_data,
             simulation_data,
             generation_data,
+            plot_data,
         );
     }
     0.0
