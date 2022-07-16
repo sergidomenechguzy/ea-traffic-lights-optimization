@@ -9,6 +9,7 @@ use plotters::prelude::{
     BitMapBackend, ChartBuilder, IntoDrawingArea, LabelAreaPosition, LineSeries,
 };
 use plotters::style::{BLUE, WHITE};
+use std::time::Instant;
 use utils::get_highest_and_lowest;
 
 pub mod data;
@@ -63,6 +64,10 @@ struct Args {
     /// Mutation variant to use
     #[clap(short, long, default_value = "prob_bitflip", possible_values = ["none", "bitflip", "prob_bitflip"])]
     mutation: String,
+
+    /// Mutation variant to use
+    #[clap(short, long, default_value = "one_point", possible_values = ["one_point", "two_point"])]
+    recombination: String,
 
     /// Probability for bitflip in prob_bitflip mutation
     #[clap(long, default_value_t = 0.0078125)]
@@ -146,6 +151,7 @@ fn main() {
         iterations: args.iterations,
         optimization: args.optimization,
         mutation: args.mutation,
+        recombination: args.recombination,
         probability_bitflip: args.probability_bitflip,
         probability_recombination: args.probability_recombination,
         population_size: args.population_size,
@@ -164,13 +170,15 @@ fn main() {
     };
 
     let mut plot_data: Vec<f64> = Vec::new();
-    if args.plot {
-        plot_data = Vec::with_capacity(args.iterations);
+    if configuration_data.plot {
+        plot_data = Vec::with_capacity(optimization_data.iterations);
     }
 
-    if args.benchmark {
+    if configuration_data.benchmark {
         let mut accumulated_results = 0.0;
-        for _ in 0..args.benchmark_iterations {
+        let mut accumulated_durations = 0.0;
+        for _ in 0..configuration_data.benchmark_iterations {
+            let start = Instant::now();
             accumulated_results += optimize(
                 &configuration_data,
                 &optimization_data,
@@ -178,11 +186,17 @@ fn main() {
                 &generation_data,
                 &mut plot_data,
             );
+            accumulated_durations += start.elapsed().as_secs_f64();
         }
         println!(
-            "Mean of best individual over {} iterations: {}",
-            args.benchmark_iterations,
-            accumulated_results / args.benchmark_iterations as f64
+            "Mean of best individual over {} iterations: {:.4}",
+            configuration_data.benchmark_iterations,
+            accumulated_results / configuration_data.benchmark_iterations as f64
+        );
+        println!(
+            "Mean of optimization duration over {} iterations: {:.4}s",
+            configuration_data.benchmark_iterations,
+            accumulated_durations / configuration_data.benchmark_iterations as f64
         );
     } else {
         optimize(
@@ -194,9 +208,19 @@ fn main() {
         );
     }
 
-    if args.plot {
+    if configuration_data.plot {
         let now: DateTime<Local> = Local::now();
         let mut plot_path = String::from("plots/");
+        plot_path.push_str(&optimization_data.optimization);
+        plot_path.push_str("--");
+        if optimization_data.optimization == "genetic" {
+            plot_path.push_str(&optimization_data.recombination);
+            plot_path.push_str("--");
+            plot_path.push_str(&optimization_data.population_size.to_string());
+            plot_path.push_str("--");
+        }
+        plot_path.push_str(&optimization_data.iterations.to_string());
+        plot_path.push_str("--");
         plot_path.push_str(&now.format("%F-%H-%M-%S").to_string());
         plot_path.push_str(".png");
 
@@ -206,18 +230,19 @@ fn main() {
         let (hightest, lowest) = get_highest_and_lowest(&plot_data);
 
         let mut ctx = ChartBuilder::on(&plot_draw_area)
-            .margin(15)
-            .set_label_area_size(LabelAreaPosition::Bottom, 40)
-            .set_label_area_size(LabelAreaPosition::Left, 40)
-            // .caption("Line Plot Demo", ("sans-serif", 40))
-            .build_cartesian_2d(0..args.iterations, plot_data[lowest]..plot_data[hightest])
-            // .build_cartesian_2d(0..args.iterations, plot_data[lowest]..plot_data[hightest])
+            .margin(30)
+            .set_label_area_size(LabelAreaPosition::Bottom, 20)
+            .set_label_area_size(LabelAreaPosition::Left, 20)
+            .build_cartesian_2d(
+                0..optimization_data.iterations,
+                plot_data[lowest]..plot_data[hightest],
+            )
             .unwrap();
 
         ctx.configure_mesh().draw().unwrap();
 
         ctx.draw_series(LineSeries::new(
-            (0..args.iterations).map(|x| (x, plot_data[x])),
+            (0..optimization_data.iterations).map(|x| (x, plot_data[x])),
             &BLUE,
         ))
         .unwrap();

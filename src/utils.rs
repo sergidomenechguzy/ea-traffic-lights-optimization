@@ -74,3 +74,11 @@ pub fn tournament(
     }
     winners
 }
+
+pub fn print_population(population: &Vec<Vec<BitVec>>) {
+    println!("");
+    for i in 0..population.len() {
+        println!("{:?}", population[i]);
+    }
+    println!("");
+}

@@ -87,6 +87,43 @@ fn one_point_crossover(
     (crossover1, crossover2)
 }
 
+fn two_point_crossover(
+    input1: &Vec<BitVec>,
+    input2: &Vec<BitVec>,
+    generation_data: &GenerationData,
+) -> (Vec<BitVec>, Vec<BitVec>) {
+    let randoms = distinct_random(0, generation_data.intersections - 1, 2);
+
+    let first_index: usize;
+    let second_index: usize;
+
+    if randoms[0] < randoms[1] {
+        first_index = randoms[0];
+        second_index = randoms[1];
+    } else {
+        first_index = randoms[1];
+        second_index = randoms[0];
+    }
+
+    let mut crossover1: Vec<BitVec> = Vec::with_capacity(generation_data.intersections);
+    let mut crossover2: Vec<BitVec> = Vec::with_capacity(generation_data.intersections);
+
+    for index in 0..generation_data.intersections {
+        let bitvec1 = input1[index].clone();
+        let bitvec2 = input2[index].clone();
+
+        if index <= first_index || index > second_index {
+            crossover1.push(bitvec1);
+            crossover2.push(bitvec2);
+        } else {
+            crossover1.push(bitvec2);
+            crossover2.push(bitvec1);
+        }
+    }
+
+    (crossover1, crossover2)
+}
+
 fn recombination(
     candidate1: &Vec<BitVec>,
     candidate2: &Vec<BitVec>,
@@ -96,7 +133,11 @@ fn recombination(
     let mut rng = rand::thread_rng();
 
     if rng.gen::<f64>() < optimization_data.probability_recombination {
-        return one_point_crossover(candidate1, candidate2, generation_data);
+        if optimization_data.recombination == "one_point" {
+            return one_point_crossover(candidate1, candidate2, generation_data);
+        } else if optimization_data.recombination == "two_point" {
+            return two_point_crossover(candidate1, candidate2, generation_data);
+        }
     }
     (candidate1.clone(), candidate2.clone())
 }
@@ -172,7 +213,7 @@ fn hillclimb(
     }
 
     println!("Final candidate:");
-    println!("{:?}\t{}", candidate, candidate_value);
+    println!("{:?}\t{:.4}", candidate, candidate_value);
     if configuration_data.print_final_simulation {
         simulate(
             &candidate,
@@ -207,7 +248,7 @@ fn genetic_algorithm(
         get_best_and_worst_candidate(&population, &population_values);
     if !configuration_data.silent {
         println!(
-            "0:\t{:?}\t{}\t{}",
+            "0:\t{:?}\t{:.4}\t{:.4}",
             best,
             best_value,
             get_mean_value(&population_values)
@@ -243,7 +284,7 @@ fn genetic_algorithm(
 
             if !configuration_data.silent {
                 println!(
-                    "{}:\t{:?}\t{}\t{}",
+                    "{}:\t{:?}\t{:.4}\t{:.4}",
                     it + 1,
                     best,
                     best_value,
@@ -258,7 +299,7 @@ fn genetic_algorithm(
 
     println!("Final candidate:");
     println!(
-        "{:?}\t{}\t{}",
+        "{:?}\t{:.4}\t{:.4}",
         best,
         best_value,
         get_mean_value(&population_values)

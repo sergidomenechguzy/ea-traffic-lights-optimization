@@ -38,6 +38,7 @@ pub struct OptimizationData {
     pub iterations: usize,
     pub optimization: String,
     pub mutation: String,
+    pub recombination: String,
     pub probability_bitflip: f64,
     pub probability_recombination: f64,
     pub population_size: usize,
