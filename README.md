@@ -118,4 +118,5 @@ cargo run -- --help
         Tournament size [default: 5]
 
 -V, --version
-        Print version information```
+        Print version information
+```
