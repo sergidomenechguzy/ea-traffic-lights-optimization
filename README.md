@@ -1,4 +1,4 @@
-# Traffic Light Optimization
+# Traffic Lights Optimization
 
 CLI tool using one of two variants of evolutionary algorithms to optimize traffic lights on a single street.
 
