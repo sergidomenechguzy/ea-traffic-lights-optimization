@@ -66,7 +66,7 @@ struct Args {
     mutation: String,
 
     /// Mutation variant to use
-    #[clap(short, long, default_value = "one_point", possible_values = ["one_point", "two_point"])]
+    #[clap(short, long, default_value = "two_point", possible_values = ["one_point", "two_point"])]
     recombination: String,
 
     /// Probability for bitflip in prob_bitflip mutation
