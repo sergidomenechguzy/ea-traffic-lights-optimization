@@ -227,19 +227,21 @@ fn main() {
         let plot_draw_area = BitMapBackend::new(&plot_path, (800, 600)).into_drawing_area();
         plot_draw_area.fill(&WHITE).unwrap();
 
-        let (hightest, lowest) = get_highest_and_lowest(&plot_data);
+        let (hightest_index, lowest_index) = get_highest_and_lowest(&plot_data);
+        let plot_min = (plot_data[lowest_index] * 10.0).floor() / 10.0;
+        let plot_max = (plot_data[hightest_index] * 10.0).ceil() / 10.0;
 
         let mut ctx = ChartBuilder::on(&plot_draw_area)
             .margin(30)
             .set_label_area_size(LabelAreaPosition::Bottom, 20)
             .set_label_area_size(LabelAreaPosition::Left, 20)
-            .build_cartesian_2d(
-                0..optimization_data.iterations,
-                plot_data[lowest]..plot_data[hightest],
-            )
+            .build_cartesian_2d(0..optimization_data.iterations, plot_min..plot_max)
             .unwrap();
 
-        ctx.configure_mesh().draw().unwrap();
+        ctx.configure_mesh()
+            .light_line_style(&WHITE)
+            .draw()
+            .unwrap();
 
         ctx.draw_series(LineSeries::new(
             (0..optimization_data.iterations).map(|x| (x, plot_data[x])),
